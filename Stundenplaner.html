@@ -1,0 +1,2255 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FH Kiel Stundenplaner Maschinenbau</title>
+    <style>
+        body {
+            font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        h1, h2 {
+            text-align: center;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .module-tracker {
+            flex: 1;
+            min-width: 300px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background-color: #f9f9f9;
+        }
+        .scheduler {
+            flex: 1;
+            min-width: 500px;
+            background-color: white;
+            border-radius: 6px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .controls button {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            margin: 0 5px;
+        }
+        .controls button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .controls button:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        }
+        .save-btn {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .load-btn {
+            background-color: #2196F3;
+            color: white;
+        }
+        .info-btn {
+            background-color: #ff9800;
+            color: white;
+        }
+        .clear-btn {
+            background-color: #f44336;
+            color: white;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            background-color: #f9f9f9;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #e6e6e6;
+            border-bottom: 2px solid #999;
+        }
+        .day-header {
+            font-weight: bold;
+            font-size: 18px;
+            background-color: #eaeaea;
+            color: #333;
+            border-bottom: 2px solid #999;
+            padding: 10px;
+        }
+        .time-cell {
+            font-weight: bold;
+            background-color: #e6e6e6;
+            vertical-align: middle;
+            border-right: 2px solid #999;
+            width: 100px;
+        }
+        .time-label {
+            font-size: 16px;
+            display: block;
+            color: #333;
+        }
+        .time-range {
+            font-size: 12px;
+            color: #666;
+            display: block;
+        }
+        .schedule-cell {
+            height: 100px;
+            vertical-align: top;
+            position: relative;
+            cursor: pointer;
+            overflow-y: auto;
+            background-color: #fff;
+            transition: background-color 0.2s;
+        }
+        .schedule-cell:hover {
+            background-color: #f0f8ff;
+        }
+        tr:nth-child(odd) {
+            background-color: rgba(0,0,0,0.03);
+        }
+        .add-buttons {
+            display: flex;
+            justify-content: center;
+            margin-top: 5px;
+        }
+        .add-module-btn, .add-custom-btn {
+            background-color: #e7f3ff;
+            border: 1px solid #2196F3;
+            border-radius: 3px;
+            padding: 4px 8px;
+            margin: 0 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .add-module-btn:hover, .add-custom-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .add-custom-btn {
+            background-color: #e8f5e9;
+            border: 1px solid #4CAF50;
+        }
+        .course-item {
+            padding: 5px;
+            border-radius: 3px;
+            margin-bottom: 5px;
+            position: relative;
+        }
+        .module-item {
+            background-color: #e7f3ff;
+            border: 1px solid #2196F3;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .custom-item {
+            background-color: #e8f5e9;
+            border: 1px solid #4CAF50;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .passed-module {
+            background-color: #c8e6c9;
+            border: 1px solid #4CAF50;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        /* Neue Klassen für aktive und inaktive Kurse basierend auf KW */
+        .course-active {
+            background-color: #e7f3ff;
+            color: #333;
+            border: 1px solid #2196F3;
+        }
+        .course-active .course-code, 
+        .course-active .course-room, 
+        .course-active .course-instructor, 
+        .course-active .course-lp {
+            color: #666;
+        }
+        .course-inactive {
+            background-color: #ffebee;
+            color: #d32f2f;
+            border: 1px solid #e57373;
+        }
+        .course-inactive .course-code, 
+        .course-inactive .course-room, 
+        .course-inactive .course-instructor, 
+        .course-inactive .course-lp {
+            color: #ef5350;
+        }
+        .remove-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            color: #f44336;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .course-title {
+            font-weight: bold;
+            font-size: 14px;
+            margin-right: 15px;
+            word-wrap: break-word;
+        }
+        .course-code, .course-room, .course-instructor {
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 25px;
+            border: none;
+            width: 60%;
+            max-width: 600px;
+            border-radius: 8px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            animation: modalFadeIn 0.3s;
+        }
+        
+        @keyframes modalFadeIn {
+            from {opacity: 0; transform: translateY(-20px);}
+            to {opacity: 1; transform: translateY(0);}
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .module-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }
+        .module-option {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .module-option:hover {
+            background-color: #f5f5f5;
+            transform: translateX(3px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .module-option.selected {
+            background-color: #e7f3ff;
+            border-color: #2196F3;
+            border-left: 4px solid #2196F3;
+        }
+        .module-option.passed {
+            background-color: #c8e6c9;
+            border-color: #4CAF50;
+        }
+        .form-group {
+            margin-bottom: 10px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 15px;
+        }
+        .modal-btn {
+            padding: 8px 16px;
+            margin-left: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .cancel-btn {
+            background-color: #f2f2f2;
+        }
+        .add-btn {
+            background-color: #2196F3;
+            color: white;
+        }
+        .custom-add-btn {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .mt-3 {
+            margin-top: 15px;
+        }
+        
+        .week-indicator {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            font-size: 14px;
+        }
+        
+        .week-indicator.ungerade {
+            color: #3f51b5;
+        }
+        
+        .week-indicator.gerade {
+            color: #673ab7;
+        }
+        
+        .semester-header {
+            background-color: #f0f0f0;
+            padding: 5px 10px;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .semester-header h4 {
+            margin: 0;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .semester-header-modal {
+            background-color: #e0e0e0;
+            padding: 5px 10px;
+            margin-top: 12px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        
+        .semester-header-modal h4 {
+            margin: 0;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .progress-summary-container {
+            margin-bottom: 25px;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .progress-summary {
+            margin-bottom: 20px;
+        }
+        
+        .progress-summary h4, .progress-section h4 {
+            margin-top: 0;
+            margin-bottom: 8px;
+            font-size: 16px;
+            color: #333;
+            font-weight: bold;
+        }
+        
+        .progress-section {
+            margin-top: 15px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            height: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background-color: #4CAF50;
+            border-radius: 5px;
+            text-align: center;
+            color: white;
+            font-size: 14px;
+            line-height: 24px;
+            font-weight: bold;
+        }
+        
+        .progress-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+        }
+        
+        .tabs-container {
+            margin-bottom: 15px;
+            margin-top: 20px;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+            margin-right: 5px;
+        }
+        
+        .tab.active {
+            background-color: #f9f9f9;
+            border-color: #ddd;
+            font-weight: bold;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .module-category {
+            margin-bottom: 15px;
+        }
+        
+        .module-category h3 {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .module-item-checkbox {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        
+        .module-item-checkbox:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .module-item-checkbox input {
+            margin-right: 10px;
+        }
+        
+        .module-item-checkbox label {
+            flex: 1;
+            cursor: pointer;
+        }
+        
+        .module-item-checkbox.checked {
+            background-color: #c8e6c9;
+        }
+        
+        .semester-tag {
+            background-color: #e0e0e0;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="background-color: #00497B; color: white; padding: 15px; border-radius: 5px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">Fachhochschule Kiel - Stundenplaner Maschinenbau</h1>
+    
+    <div class="container">
+        <div class="scheduler">
+            <h2 style="color: #00497B; font-size: 24px; margin-bottom: 20px; border-bottom: 2px solid #00497B; padding-bottom: 10px;">📅 Stundenplan</h2>
+            
+            <!-- KW-Anzeige und Eingabefeld -->
+            <div class="kw-container" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background-color: #f5f5f5; padding: 10px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div>
+                    <span style="font-weight: bold;">Aktuelle Kalenderwoche:</span> 
+                    <span id="current-kw" style="font-size: 16px; margin-left: 5px; color: #00497B; font-weight: bold;">0</span>
+                    (<span id="kw-type" style="font-weight: bold;"></span> Woche)
+                </div>
+                <div style="display: flex; align-items: center;">
+                    <span style="margin-right: 10px;">KW manuell setzen:</span>
+                    <input type="number" id="manual-kw" min="1" max="53" style="width: 60px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
+                    <button onclick="setManualKW()" style="margin-left: 5px; padding: 5px 10px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">Anwenden</button>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button class="save-btn" onclick="saveScheduleToFile()">💾 Stundenplan speichern</button>
+                <button class="load-btn" onclick="loadScheduleFromFile()">📂 Stundenplan laden</button>
+                <button class="info-btn" onclick="document.getElementById('info-modal').style.display='block'">ℹ️ Legende</button>
+                <button class="clear-btn" onclick="clearSchedule()">🗑️ Stundenplan löschen</button>
+            </div>
+            
+            <!-- Verstecktes Datei-Upload-Element -->
+            <input type="file" id="fileInput" style="display: none;" accept=".json" onchange="handleFileUpload(event)">
+            
+            <table id="schedule-table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th class="day-header">Mo</th>
+                        <th class="day-header">Di</th>
+                        <th class="day-header">Mi</th>
+                        <th class="day-header">Do</th>
+                        <th class="day-header">Fr</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="time-cell">
+                            <span class="time-label">1</span>
+                            <span class="time-range">08:15 - 09:45</span>
+                        </td>
+                        <td class="schedule-cell" id="Mo-0" onclick="handleCellClick('Mo', 0)"></td>
+                        <td class="schedule-cell" id="Di-0" onclick="handleCellClick('Di', 0)"></td>
+                        <td class="schedule-cell" id="Mi-0" onclick="handleCellClick('Mi', 0)"></td>
+                        <td class="schedule-cell" id="Do-0" onclick="handleCellClick('Do', 0)"></td>
+                        <td class="schedule-cell" id="Fr-0" onclick="handleCellClick('Fr', 0)"></td>
+                    </tr>
+                    <tr>
+                        <td class="time-cell">
+                            <span class="time-label">2</span>
+                            <span class="time-range">10:15 - 11:45</span>
+                        </td>
+                        <td class="schedule-cell" id="Mo-1" onclick="handleCellClick('Mo', 1)"></td>
+                        <td class="schedule-cell" id="Di-1" onclick="handleCellClick('Di', 1)"></td>
+                        <td class="schedule-cell" id="Mi-1" onclick="handleCellClick('Mi', 1)"></td>
+                        <td class="schedule-cell" id="Do-1" onclick="handleCellClick('Do', 1)"></td>
+                        <td class="schedule-cell" id="Fr-1" onclick="handleCellClick('Fr', 1)"></td>
+                    </tr>
+                    <tr>
+                        <td class="time-cell">
+                            <span class="time-label">3</span>
+                            <span class="time-range">12:00 - 13:30</span>
+                        </td>
+                        <td class="schedule-cell" id="Mo-2" onclick="handleCellClick('Mo', 2)"></td>
+                        <td class="schedule-cell" id="Di-2" onclick="handleCellClick('Di', 2)"></td>
+                        <td class="schedule-cell" id="Mi-2" onclick="handleCellClick('Mi', 2)"></td>
+                        <td class="schedule-cell" id="Do-2" onclick="handleCellClick('Do', 2)"></td>
+                        <td class="schedule-cell" id="Fr-2" onclick="handleCellClick('Fr', 2)"></td>
+                    </tr>
+                    <tr>
+                        <td class="time-cell">
+                            <span class="time-label">4</span>
+                            <span class="time-range">14:30 - 16:00</span>
+                        </td>
+                        <td class="schedule-cell" id="Mo-3" onclick="handleCellClick('Mo', 3)"></td>
+                        <td class="schedule-cell" id="Di-3" onclick="handleCellClick('Di', 3)"></td>
+                        <td class="schedule-cell" id="Mi-3" onclick="handleCellClick('Mi', 3)"></td>
+                        <td class="schedule-cell" id="Do-3" onclick="handleCellClick('Do', 3)"></td>
+                        <td class="schedule-cell" id="Fr-3" onclick="handleCellClick('Fr', 3)"></td>
+                    </tr>
+                    <tr>
+                        <td class="time-cell">
+                            <span class="time-label">5</span>
+                            <span class="time-range">16:15 - 17:45</span>
+                        </td>
+                        <td class="schedule-cell" id="Mo-4" onclick="handleCellClick('Mo', 4)"></td>
+                        <td class="schedule-cell" id="Di-4" onclick="handleCellClick('Di', 4)"></td>
+                        <td class="schedule-cell" id="Mi-4" onclick="handleCellClick('Mi', 4)"></td>
+                        <td class="schedule-cell" id="Do-4" onclick="handleCellClick('Do', 4)"></td>
+                        <td class="schedule-cell" id="Fr-4" onclick="handleCellClick('Fr', 4)"></td>
+                    </tr>
+                    <tr>
+                        <td class="time-cell">
+                            <span class="time-label">6</span>
+                            <span class="time-range">18:00 - 19:30</span>
+                        </td>
+                        <td class="schedule-cell" id="Mo-5" onclick="handleCellClick('Mo', 5)"></td>
+                        <td class="schedule-cell" id="Di-5" onclick="handleCellClick('Di', 5)"></td>
+                        <td class="schedule-cell" id="Mi-5" onclick="handleCellClick('Mi', 5)"></td>
+                        <td class="schedule-cell" id="Do-5" onclick="handleCellClick('Do', 5)"></td>
+                        <td class="schedule-cell" id="Fr-5" onclick="handleCellClick('Fr', 5)"></td>
+                    </tr>
+                    <tr>
+                        <td class="time-cell">
+                            <span class="time-label">7</span>
+                            <span class="time-range">19:45 - 21:15</span>
+                        </td>
+                        <td class="schedule-cell" id="Mo-6" onclick="handleCellClick('Mo', 6)"></td>
+                        <td class="schedule-cell" id="Di-6" onclick="handleCellClick('Di', 6)"></td>
+                        <td class="schedule-cell" id="Mi-6" onclick="handleCellClick('Mi', 6)"></td>
+                        <td class="schedule-cell" id="Do-6" onclick="handleCellClick('Do', 6)"></td>
+                        <td class="schedule-cell" id="Fr-6" onclick="handleCellClick('Fr', 6)"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="module-tracker">
+            <h2 style="color: #00497B; font-size: 24px; margin-bottom: 20px; border-bottom: 2px solid #00497B; padding-bottom: 10px;">📚 Modulübersicht</h2>
+            
+                            <div class="progress-summary-container">
+                <div class="progress-summary">
+                    <h4>Gesamtfortschritt</h4>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill">0%</div>
+                    </div>
+                    <div class="progress-stats">
+                        <div>Bestanden: <span id="passed-count">0</span>/<span id="total-count">0</span></div>
+                        <div>LP: <span id="passed-lp">0</span>/<span id="total-lp">0</span></div>
+                    </div>
+                </div>
+                
+                <div class="progress-section">
+                    <h4>Pflichtmodule</h4>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill-pflicht" style="background-color: #2196F3;">0%</div>
+                    </div>
+                    <div class="progress-stats">
+                        <div>Bestanden: <span id="passed-count-pflicht">0</span>/<span id="total-count-pflicht">0</span></div>
+                        <div>LP: <span id="passed-lp-pflicht">0</span>/<span id="total-lp-pflicht">0</span></div>
+                    </div>
+                </div>
+                
+                <div class="progress-section">
+                    <h4>Wahlmodule (<select id="schwerpunkt-select" onchange="changeSchwerpunkt()">
+                        <option value="Allgemeiner Maschinenbau">Allgemeiner Maschinenbau</option>
+                        <option value="Digitale Fabrik">Digitale Fabrik</option>
+                        <option value="Entwicklung und Konstruktion">Entwicklung und Konstruktion</option>
+                        <option value="Produktionstechnologie">Produktionstechnologie</option>
+                    </select>)</h4>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill-wahlmodule" style="background-color: #FFC107;">0%</div>
+                    </div>
+                    <div class="progress-stats">
+                        <div>Bestanden: <span id="passed-count-wahlmodule">0</span> (davon <span id="passed-pflicht-wahlmodule">0</span>/<span id="total-pflicht-wahlmodule">0</span> Pflichtmodule)</div>
+                        <div>LP: <span id="passed-lp-wahlmodule">0</span>/<span id="total-lp-wahlmodule">25</span></div>
+                    </div>
+                </div>
+                
+                <div class="progress-section">
+                    <h4>Interdisziplinäre Wahlmodule</h4>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill-interdis" style="background-color: #9C27B0;">0%</div>
+                    </div>
+                    <div class="progress-stats">
+                        <div>Bestanden: <span id="passed-count-interdis">0</span>/<span id="total-count-interdis">0</span></div>
+                        <div>LP: <span id="passed-lp-interdis">0</span>/<span id="total-lp-required">10</span></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tabs-container">
+                <div class="tabs">
+                    <div class="tab active" data-tab="pflichtmodule">Pflichtmodule</div>
+                    <div class="tab" data-tab="schwerpunktmodule">Schwerpunktmodule</div>
+                    <div class="tab" data-tab="interdismodule">Interdisziplinäre Module</div>
+                    <div class="tab" data-tab="wahlmodule">Wahlmodule</div>
+                </div>
+            </div>
+            
+            <div class="tab-content active" id="pflichtmodule">
+                <div class="module-category">
+                    <h3>Pflichtmodule (Semester 1-6)</h3>
+                    <div id="pflicht-modules-list">
+                        <!-- Wird durch JavaScript gefüllt -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="schwerpunktmodule">
+                <div class="module-category">
+                    <h3 id="schwerpunkt-titel">Schwerpunktmodule</h3>
+                    <div id="schwerpunkt-pflicht-list">
+                        <h4 style="color: #00497B; margin-top: 10px; margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #00497B;">Pflichtmodule für diesen Schwerpunkt</h4>
+                        <!-- Wird durch JavaScript gefüllt -->
+                    </div>
+                    <div id="schwerpunkt-modules-list">
+                        <h4 style="color: #00497B; margin-top: 20px; margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #00497B;">Weitere verfügbare Module</h4>
+                        <!-- Wird durch JavaScript gefüllt -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="interdismodule">
+                <div class="module-category">
+                    <h3>Interdisziplinäre Wahlmodule</h3>
+                    <div id="interdis-modules-list">
+                        <!-- Wird durch JavaScript gefüllt -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="wahlmodule">
+                <div class="module-category">
+                    <h3>Allgemeine Wahlmodule</h3>
+                    <div id="wahlmodule-list">
+                        <!-- Wird durch JavaScript gefüllt -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Module Selection Modal -->
+    <div id="moduleModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Modul auswählen</h2>
+            </div>
+            <div class="module-list" id="moduleList">
+                <!-- Module options will be added here via JavaScript -->
+            </div>
+            <div class="module-type-selection" id="moduleTypeSelection" style="display: none;">
+                <p><strong>Übungstyp auswählen:</strong></p>
+                <div style="display: flex; margin-top: 10px;">
+                    <label style="margin-right: 15px;">
+                        <input type="radio" name="moduleType" value="standard" checked> Standard
+                    </label>
+                    <label style="margin-right: 15px;">
+                        <input type="radio" name="moduleType" value="ÜL"> ÜL (Übung im Labor)
+                    </label>
+                    <label>
+                        <input type="radio" name="moduleType" value="ÜT"> ÜT (Übung am Tisch)
+                    </label>
+                </div>
+                
+                <div class="mt-3">
+                    <p><strong>Wochenrhythmus:</strong></p>
+                    <div style="display: flex; margin-top: 10px;">
+                        <label style="margin-right: 15px;">
+                            <input type="radio" name="weekType" value="alle" checked> Alle Wochen
+                        </label>
+                        <label style="margin-right: 15px;">
+                            <input type="radio" name="weekType" value="ungerade"> Nur ungerade Wochen
+                        </label>
+                        <label>
+                            <input type="radio" name="weekType" value="gerade"> Nur gerade Wochen
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Neues Eingabefeld für den Raum -->
+                <div class="mt-3">
+                    <p><strong>Raum:</strong></p>
+                    <div style="margin-top: 10px;">
+                        <input type="text" id="moduleRoom" placeholder="Raumnummer eingeben (z.B. C13-1.02)" 
+                               style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn cancel-btn" onclick="closeModuleModal()">Abbrechen</button>
+                <button class="modal-btn add-btn" id="addModuleBtn" onclick="addSelectedModule()">Hinzufügen</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Custom Course Modal -->
+    <div id="customModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Eigenen Kurs hinzufügen</h2>
+            </div>
+            <div class="form-container">
+                <div class="form-group">
+                    <label for="courseTitle">Kurstitel</label>
+                    <input type="text" id="courseTitle" placeholder="Titel eingeben">
+                </div>
+                <div class="form-group">
+                    <label for="courseCode">Kurscode (optional)</label>
+                    <input type="text" id="courseCode" placeholder="Code eingeben">
+                </div>
+                <div class="form-group">
+                    <label for="courseRoom">Raum (optional)</label>
+                    <input type="text" id="courseRoom" placeholder="Raum eingeben">
+                </div>
+                <div class="form-group">
+                    <label for="courseInstructor">Dozent (optional)</label>
+                    <input type="text" id="courseInstructor" placeholder="Dozent eingeben">
+                </div>
+                
+                <!-- Wochenrhythmus für eigene Kurse -->
+                <div class="form-group" style="margin-top: 15px;">
+                    <label style="font-weight: bold;">Wochenrhythmus:</label>
+                    <div style="display: flex; margin-top: 10px;">
+                        <label style="margin-right: 15px; display: flex; align-items: center;">
+                            <input type="radio" name="customWeekType" value="alle" checked style="margin-right: 5px;"> Alle Wochen
+                        </label>
+                        <label style="margin-right: 15px; display: flex; align-items: center;">
+                            <input type="radio" name="customWeekType" value="ungerade" style="margin-right: 5px;"> Nur ungerade Wochen
+                        </label>
+                        <label style="display: flex; align-items: center;">
+                            <input type="radio" name="customWeekType" value="gerade" style="margin-right: 5px;"> Nur gerade Wochen
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn cancel-btn" onclick="closeCustomModal()">Abbrechen</button>
+                <button class="modal-btn custom-add-btn" onclick="addCustomCourse()">Hinzufügen</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Info Modal -->
+    <div id="info-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Wochenlegende</h2>
+            </div>
+            <div style="margin: 20px 0;">
+                <p><strong>⬤</strong> = Nur in geraden Wochen</p>
+                <p><strong>◯</strong> = Nur in ungeraden Wochen</p>
+                <p>Kein Symbol = Jede Woche</p>
+                <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
+                <p><span style="display: inline-block; width: 20px; height: 20px; background-color: #e7f3ff; margin-right: 10px; vertical-align: middle; border: 1px solid #2196F3;"></span> = Findet in aktueller Woche statt</p>
+                <p><span style="display: inline-block; width: 20px; height: 20px; background-color: #ffebee; margin-right: 10px; vertical-align: middle; border: 1px solid #e57373;"></span> = Findet in aktueller Woche nicht statt</p>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn add-btn" onclick="document.getElementById('info-modal').style.display='none'">Verstanden</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Funktion zur Berechnung der ISO-Kalenderwoche
+        function getWeekNumber(d) {
+            // Copy date so don't modify original
+            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            // Set to nearest Thursday: current date + 4 - current day number
+            // Make Sunday's day number 7
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+            // Get first day of year
+            var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            // Calculate full weeks to nearest Thursday
+            var weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+            return weekNo;
+        }
+        
+        // Aktuelle KW und KW-Typ (gerade/ungerade) speichern
+        let currentKW = getWeekNumber(new Date());
+        let isEvenWeek = currentKW % 2 === 0;
+        
+        // Funktion zur Aktualisierung der KW-Anzeige
+        function updateKWDisplay() {
+            const kwDisplay = document.getElementById('current-kw');
+            const kwTypeDisplay = document.getElementById('kw-type');
+            const manualKWInput = document.getElementById('manual-kw');
+            
+            if (kwDisplay) kwDisplay.textContent = currentKW;
+            if (kwTypeDisplay) kwTypeDisplay.textContent = isEvenWeek ? 'gerade' : 'ungerade';
+            if (manualKWInput) manualKWInput.value = currentKW;
+            
+            // Stundenplan aktualisieren, um Kurse entsprechend zu markieren
+            updateScheduleDisplay();
+        }
+        
+        // Funktion zum manuellen Setzen der KW
+        function setManualKW() {
+            const manualKWInput = document.getElementById('manual-kw');
+            if (!manualKWInput) return;
+            
+            const newKW = parseInt(manualKWInput.value);
+            if (isNaN(newKW) || newKW < 1 || newKW > 53) {
+                alert('Bitte gib eine gültige Kalenderwoche zwischen 1 und 53 ein.');
+                return;
+            }
+            
+            currentKW = newKW;
+            isEvenWeek = currentKW % 2 === 0;
+            
+            // KW-Anzeige und Stundenplan aktualisieren
+            updateKWDisplay();
+        }
+        
+        // Definition der Module aus dem Modulhandbuch mit zusätzlichen Informationen
+        const modules = [
+            { id: 1, code: "1.01", title: "Mathematik I", semester: 1, lp: 7, category: "pflicht", passed: false },
+            { id: 2, code: "1.02", title: "Mathematik II", semester: 2, lp: 8, category: "pflicht", passed: false },
+            { id: 3, code: "1.03", title: "Informatik I", semester: 1, lp: 5, category: "pflicht", passed: false },
+            { id: 4, code: "1.14a", title: "Kinematik und Kinetik", semester: 3, lp: 5, category: "pflicht", passed: false },
+            { id: 5, code: "1.14b", title: "Thermodynamik", semester: 4, lp: 5, category: "pflicht", passed: false },
+            { id: 6, code: "1.05", title: "Naturwissenschaftliche Grundlagen", semester: 3, lp: 5, category: "pflicht", passed: false },
+            { id: 7, code: "2.01", title: "Statik", semester: 1, lp: 7, category: "pflicht", passed: false },
+            { id: 8, code: "2.02", title: "Festigkeitslehre", semester: 2, lp: 5, category: "pflicht", passed: false },
+            { id: 9, code: "2.03", title: "Werkstofftechnik", semester: "2 und 3", lp: 10, category: "pflicht", passed: false },
+            { id: 10, code: "2.04", title: "Einführung in die Maschinenkonstruktion", semester: 1, lp: 5, category: "pflicht", passed: false },
+            { id: 11, code: "2.05", title: "CAD–M", semester: "1 und 2", lp: 8, category: "pflicht", passed: false },
+            { id: 12, code: "2.06", title: "Maschinendynamik", semester: 4, lp: 5, category: "pflicht", passed: false },
+            { id: 13, code: "2.07", title: "Fluidmechanik", semester: 3, lp: 5, category: "pflicht", passed: false },
+            { id: 14, code: "2.08", title: "Grundlagen der Fertigungstechnik", semester: 1, lp: 5, category: "pflicht", passed: false },
+            { id: 15, code: "2.09", title: "Kunststofftechnik", semester: 4, lp: 5, category: "pflicht", passed: false },
+            { id: 16, code: "2.10", title: "Elektrotechnik", semester: 4, lp: 5, category: "pflicht", passed: false },
+            { id: 17, code: "2.11", title: "Regelungstechnik und elektrische Antriebe", semester: 5, lp: 5, category: "pflicht", passed: false },
+            { id: 18, code: "2.12", title: "Maschinenelemente", semester: "2 und 3", lp: 15, category: "pflicht", passed: false },
+            { id: 19, code: "2.13", title: "Qualitätsmanagement", semester: 4, lp: 5, category: "pflicht", passed: false },
+            { id: 20, code: "2.14", title: "BWL und Recht", semester: 4, lp: 5, category: "pflicht", passed: false }
+        ];
+        
+        // Zusätzliche Wahlmodule
+        const wahlmodules = [
+            // Schwerpunkt: Allgemeiner Maschinenbau
+            { id: 101, code: "AM1", title: "Fahrzeugtechnik", semester: "ab 3", lp: 5, category: "schwerpunkt", schwerpunktTyp: "Allgemeiner Maschinenbau", pflicht: true, passed: false },
+            { id: 102, code: "AM2", title: "Fügetechnik", semester: "ab 3", lp: 5, category: "schwerpunkt", schwerpunktTyp: "Allgemeiner Maschinenbau", pflicht: true, passed: false },
+            { id: 103, code: "AM3", title: "Kraft- und Arbeitsmaschinen", semester: "ab 3", lp: 5, category: "schwerpunkt", schwerpunktTyp: "Allgemeiner Maschinenbau", pflicht: true, passed: false },
+            { id: 104, code: "AM4", title: "Methodische Produktentwicklung", semester: "ab 3", lp: 5, category: "schwerpunkt", schwerpunktTyp: "Allgemeiner Maschinenbau", pflicht: true, passed: false },
+            { id: 105, code: "AM5", title: "Spanende Fertigungsverfahren", semester: "ab 3", lp: 5, category: "schwerpunkt", schwerpunktTyp: "Allgemeiner Maschinenbau", pflicht: true, passed: false },
+            { id: 106, code: "AM6", title: "Werkzeugmaschinen und CAM", semester: "ab 3", lp: 5, category: "schwerpunkt", schwerpunktTyp: "Allgemeiner Maschinenbau", pflicht: true, passed: false },
+            
+            // Schwerpunkt: Digitale Fabrik
+            { id: 201, code: "DF1", title: "Produktionsorganisation", semester: "ab 3", lp: 5, category: "schwerpunkt", schwerpunktTyp: "Digitale Fabrik", pflicht: true, passed: false },
+            { id: 202, code: "DF2", title: "Techniken der digitalen Fabrik", semester: "ab 3", lp: 5, category: "schwerpunkt", schwerpunktTyp: "Digitale Fabrik", pflicht: true, passed: false },
+            
+            // Schwerpunkt: Entwicklung und Konstruktion
+            { id: 301, code: "EK1", title: "Kraft- und Arbeitsmaschinen", semester: "ab 3", lp: 5, category: "schwerpunkt", schwerpunktTyp: "Entwicklung und Konstruktion", pflicht: true, passed: false },
+            { id: 302, code: "EK2", title: "Methodische Produktentwicklung", semester: "ab 3", lp: 5, category: "schwerpunkt", schwerpunktTyp: "Entwicklung und Konstruktion", pflicht: true, passed: false },
+            
+            // Schwerpunkt: Produktionstechnologie
+            { id: 401, code: "PT1", title: "Spanende Fertigungsverfahren", semester: "ab 3", lp: 5, category: "schwerpunkt", schwerpunktTyp: "Produktionstechnologie", pflicht: true, passed: false },
+            { id: 402, code: "PT2", title: "Werkzeugmaschinen und CAM", semester: "ab 3", lp: 5, category: "schwerpunkt", schwerpunktTyp: "Produktionstechnologie", pflicht: true, passed: false },
+            
+            // Interdisziplinäre Wahlmodule
+            { id: 501, code: "W2.1", title: "StartIng", semester: "ab 1", lp: 5, category: "interdis", passed: false },
+            { id: 502, code: "W2.2", title: "Technisches Englisch", semester: "ab 1", lp: 5, category: "interdis", passed: false },
+            { id: 503, code: "W2.3", title: "Projektmanagement", semester: "ab 3", lp: 5, category: "interdis", passed: false },
+            { id: 504, code: "W2.4", title: "Wirtschaftsenglisch", semester: "ab 1", lp: 5, category: "interdis", passed: false },
+            { id: 505, code: "W2.5", title: "Interkulturelle Kommunikation", semester: "ab 2", lp: 5, category: "interdis", passed: false },
+            { id: 506, code: "W2.6", title: "Nachhaltigkeit im Ingenieurswesen", semester: "ab 3", lp: 5, category: "interdis", passed: false },
+            
+            // Zusätzliche allgemeine Wahlmodule
+            { id: 601, code: "W3.1", title: "3D Druck – Additive Manufacturing", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 602, code: "W3.2", title: "Akustik", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 603, code: "W3.3", title: "Anwendung der Steuerungs- und Regelungstechnik in der Robotik", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 604, code: "W3.4", title: "Automatisierungstechnik 1", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 605, code: "W3.5", title: "CAD Schiffskonstruktion", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 606, code: "W3.6", title: "CAD-Applikationen", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 607, code: "W3.7", title: "Dampfkraftanlagen und Verdichter", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 608, code: "W3.8", title: "Gasturbine, Dampfturbine, Wärmeübertragung", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 609, code: "W3.9", title: "Gasturbine, Gasdynamik mit Wärmeübertragung", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 610, code: "W3.10", title: "Einführung in die Offshore Windenergietechnik", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 611, code: "W3.11", title: "Einführung in die Robotertechnologien", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 612, code: "W3.12", title: "Einführung in Siemens-PLM CAD (NX)", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 613, code: "W3.13", title: "Fertigungsmesstechnik", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 614, code: "W3.14", title: "Fertigungstechnik Großbauteile", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 615, code: "W3.15", title: "Grundlagen Maschinelles Lernen", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 616, code: "W3.16", title: "Überfachliche Ausbildung", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 617, code: "W3.17", title: "Hydraulik und Antriebstechnik", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 618, code: "W3.18", title: "Korrosionsschutz", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 619, code: "W3.19", title: "Montagetechnik Großanlagen", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 620, code: "W3.20", title: "Analysen für Transport- und Installationsphase", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 621, code: "W3.21", title: "Einführung in die FE-Methode", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 622, code: "W3.22", title: "Einführung in die Industrie 4.0", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 623, code: "W3.23", title: "Klima- und Belüftungstechnik", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 624, code: "W3.24", title: "Technisches Projektmanagement", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 625, code: "W3.25", title: "Umformtechnik", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 626, code: "W3.26", title: "Steuerungstechnik", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 627, code: "W3.27", title: "Studienarbeit im Maschinenbau (Bachelor)", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 628, code: "W3.28", title: "Werkstoffe für Fahrzeugreifen", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 629, code: "W3.29", title: "Windenergietechnik", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 630, code: "W3.30", title: "Raceyard I", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false },
+            { id: 631, code: "W3.31", title: "Raceyard II", semester: "ab 3", lp: 5, category: "wahlmodul", passed: false }
+        ];
+        
+        // Alle Module kombinieren
+        const allModules = [...modules, ...wahlmodules];
+
+        // Datenstruktur für den Stundenplan initialisieren
+        let schedule = {
+            Mo: Array(7).fill().map(() => []),
+            Di: Array(7).fill().map(() => []),
+            Mi: Array(7).fill().map(() => []),
+            Do: Array(7).fill().map(() => []),
+            Fr: Array(7).fill().map(() => [])
+        };
+
+        // Globale Variable für den ausgewählten Schwerpunkt
+        let selectedSchwerpunkt = "Allgemeiner Maschinenbau"; // Standard-Schwerpunkt
+
+        // Variablen zur Verfolgung der aktuellen Auswahl
+        let selectedDay = null;
+        let selectedTimeSlot = null;
+        let selectedModule = null;
+
+        // Seite initialisieren
+        function init() {
+            // Tabs einrichten
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                    
+                    this.classList.add('active');
+                    document.getElementById(this.dataset.tab).classList.add('active');
+                });
+            });
+            
+            // Modullisten befüllen
+            populateModuleLists();
+            
+            // Modulauswahlliste befüllen
+            populateModuleSelectionList();
+
+            // Jede Zelle mit Hinzufügen-Buttons initialisieren
+            document.querySelectorAll('.schedule-cell').forEach(cell => {
+                cell.innerHTML = ''; // Zelle zuerst leeren
+                addButtonsToCell(cell);
+            });
+
+            // Gespeicherte Daten laden
+            loadModuleStatus();
+            loadSchedule(false);
+            
+            // Fortschritt aktualisieren
+            updateProgress();
+        }
+        
+        // Modullisten im Tracker befüllen
+        function populateModuleLists() {
+            const pflichtContainer = document.getElementById('pflicht-modules-list');
+            const schwerpunktPflichtContainer = document.getElementById('schwerpunkt-pflicht-list');
+            const schwerpunktWahlContainer = document.getElementById('schwerpunkt-modules-list');
+            const interdisContainer = document.getElementById('interdis-modules-list');
+            const wahlmoduleContainer = document.getElementById('wahlmodule-list');
+            
+            // Container leeren
+            pflichtContainer.innerHTML = '';
+            if (schwerpunktPflichtContainer) schwerpunktPflichtContainer.innerHTML = '<h4 style="color: #00497B; margin-top: 10px; margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #00497B;">Pflichtmodule für diesen Schwerpunkt</h4>';
+            if (schwerpunktWahlContainer) schwerpunktWahlContainer.innerHTML = '<h4 style="color: #00497B; margin-top: 20px; margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #00497B;">Weitere verfügbare Module</h4>';
+            interdisContainer.innerHTML = '';
+            if (wahlmoduleContainer) wahlmoduleContainer.innerHTML = '';
+            
+            // Module nach Semester und dann alphabetisch sortieren
+            const sortedPflichtModules = [...modules].sort((a, b) => {
+                // Extract semester numbers for comparison
+                const semA = typeof a.semester === 'string' ? 
+                    parseInt(a.semester.split(' ')[0]) : a.semester;
+                const semB = typeof b.semester === 'string' ? 
+                    parseInt(b.semester.split(' ')[0]) : b.semester;
+                
+                // First sort by semester
+                if (semA !== semB) return semA - semB;
+                
+                // Then sort alphabetically by title
+                return a.title.localeCompare(b.title);
+            });
+            
+            // Schwerpunktmodule filtern und sortieren
+            const allSchwerpunktModules = [...wahlmodules].filter(m => m.category === 'schwerpunkt');
+            
+            // Pflichtmodule des aktuellen Schwerpunkts
+            const schwerpunktPflichtModules = allSchwerpunktModules.filter(
+                m => m.schwerpunktTyp === selectedSchwerpunkt && m.pflicht === true
+            ).sort((a, b) => a.title.localeCompare(b.title));
+            
+            // Übrige Module des aktuellen Schwerpunkts
+            const schwerpunktRestModules = allSchwerpunktModules.filter(
+                m => m.schwerpunktTyp === selectedSchwerpunkt && (!m.pflicht || m.pflicht === false)
+            ).sort((a, b) => a.title.localeCompare(b.title));
+                
+            const sortedInterdisModules = [...wahlmodules]
+                .filter(m => m.category === 'interdis')
+                .sort((a, b) => {
+                    // Extract semester numbers for comparison
+                    const semA = typeof a.semester === 'string' ? 
+                        parseInt(a.semester.replace('ab ', '')) : a.semester;
+                    const semB = typeof b.semester === 'string' ? 
+                        parseInt(b.semester.replace('ab ', '')) : b.semester;
+                    
+                    // First sort by semester
+                    if (semA !== semB) return semA - semB;
+                    
+                    // Then sort alphabetically by title
+                    return a.title.localeCompare(b.title);
+                });
+            
+            // Allgemeine Wahlmodule sortieren
+            const sortedWahlmodule = [...wahlmodules]
+                .filter(m => m.category === 'wahlmodul')
+                .sort((a, b) => a.title.localeCompare(b.title));
+            
+            // Schwerpunktmodule aller Schwerpunkte (für Wahlmodule)
+            const allSchwerpunktModulesForWahl = [...wahlmodules]
+                .filter(m => m.category === 'schwerpunkt')
+                .sort((a, b) => a.title.localeCompare(b.title));
+            
+            // Group pflicht modules by semester for better organization
+            const semesterGroups = {};
+            
+            sortedPflichtModules.forEach(module => {
+                const semKey = module.semester.toString();
+                if (!semesterGroups[semKey]) {
+                    semesterGroups[semKey] = [];
+                }
+                semesterGroups[semKey].push(module);
+            });
+            
+            // Create semester headers and add modules
+            Object.keys(semesterGroups).sort((a, b) => {
+                // Sort semester keys numerically
+                const numA = parseInt(a.split(' ')[0]);
+                const numB = parseInt(b.split(' ')[0]);
+                return numA - numB;
+            }).forEach(semester => {
+                // Create semester header
+                const semHeader = document.createElement('div');
+                semHeader.className = 'semester-header';
+                semHeader.innerHTML = `<h4>Semester ${semester}</h4>`;
+                pflichtContainer.appendChild(semHeader);
+                
+                // Add modules for this semester
+                semesterGroups[semester].forEach(module => {
+                    const moduleItem = createModuleCheckboxItem(module);
+                    pflichtContainer.appendChild(moduleItem);
+                });
+            });
+            
+            // Add Schwerpunkt Pflichtmodule
+            schwerpunktPflichtModules.forEach(module => {
+                const moduleItem = createModuleCheckboxItem(module);
+                // Spezielle Kennzeichnung für Pflichtmodule
+                moduleItem.style.borderLeft = '3px solid #e91e63';
+                moduleItem.style.paddingLeft = '10px';
+                
+                if (schwerpunktPflichtContainer) {
+                    schwerpunktPflichtContainer.appendChild(moduleItem);
+                }
+            });
+            
+            // Add übrige Schwerpunktmodule
+            schwerpunktRestModules.forEach(module => {
+                const moduleItem = createModuleCheckboxItem(module);
+                if (schwerpunktWahlContainer) {
+                    schwerpunktWahlContainer.appendChild(moduleItem);
+                }
+            });
+            
+            // Add Interdisziplinäre Module
+            sortedInterdisModules.forEach(module => {
+                const moduleItem = createModuleCheckboxItem(module);
+                interdisContainer.appendChild(moduleItem);
+            });
+            
+            // Wahlmodule-Container mit Unterkategorien
+            if (wahlmoduleContainer) {
+                // Allgemeine Wahlmodule
+                const wahlmoduleHeader = document.createElement('div');
+                wahlmoduleHeader.className = 'semester-header';
+                wahlmoduleHeader.innerHTML = `<h4>Allgemeine Wahlmodule</h4>`;
+                wahlmoduleContainer.appendChild(wahlmoduleHeader);
+                
+                sortedWahlmodule.forEach(module => {
+                    const moduleItem = createModuleCheckboxItem(module);
+                    wahlmoduleContainer.appendChild(moduleItem);
+                });
+                
+                // Alle Schwerpunktmodule als Wahlmöglichkeit
+                const schwerpunktHeader = document.createElement('div');
+                schwerpunktHeader.className = 'semester-header';
+                schwerpunktHeader.innerHTML = `<h4>Schwerpunktmodule (max. 25 LP anrechenbar)</h4>`;
+                schwerpunktHeader.style.marginTop = '30px';
+                wahlmoduleContainer.appendChild(schwerpunktHeader);
+                
+                // Hinweis zu Schwerpunktmodulen
+                const infoBox = document.createElement('div');
+                infoBox.style.padding = '10px';
+                infoBox.style.marginBottom = '15px';
+                infoBox.style.backgroundColor = '#f5f5f5';
+                infoBox.style.borderRadius = '4px';
+                infoBox.style.border = '1px solid #e0e0e0';
+                infoBox.innerHTML = `
+                    <p style="margin: 0; font-size: 14px;">
+                        <span style="color: #ff9800; font-weight: bold;">⚠️ Hinweis:</span> 
+                        Beachte, dass du für deinen gewählten Schwerpunkt die entsprechenden Pflichtmodule absolvieren musst. 
+                        Insgesamt können maximal 25 LP aus Schwerpunktmodulen für deinen Abschluss angerechnet werden.
+                    </p>
+                `;
+                wahlmoduleContainer.appendChild(infoBox);
+                
+                // Gruppiere nach Schwerpunkt
+                const schwerpunktGroups = {};
+                allSchwerpunktModulesForWahl.forEach(module => {
+                    if (!schwerpunktGroups[module.schwerpunktTyp]) {
+                        schwerpunktGroups[module.schwerpunktTyp] = [];
+                    }
+                    schwerpunktGroups[module.schwerpunktTyp].push(module);
+                });
+                
+                // Für jeden Schwerpunkt eine Unterüberschrift erstellen
+                Object.keys(schwerpunktGroups).sort().forEach(schwerpunktName => {
+                    const schwerpunktSubHeader = document.createElement('div');
+                    schwerpunktSubHeader.className = 'semester-header';
+                    schwerpunktSubHeader.style.backgroundColor = '#f0f0f0';
+                    schwerpunktSubHeader.style.padding = '5px 10px';
+                    schwerpunktSubHeader.style.marginTop = '15px';
+                    schwerpunktSubHeader.style.marginBottom = '5px';
+                    schwerpunktSubHeader.style.borderRadius = '4px';
+                    schwerpunktSubHeader.style.fontSize = '14px';
+                    schwerpunktSubHeader.style.borderLeft = '3px solid #2196F3';
+                    schwerpunktSubHeader.style.paddingLeft = '10px';
+                    schwerpunktSubHeader.innerHTML = `<h4 style="margin: 0;">Schwerpunkt: ${schwerpunktName}</h4>`;
+                    wahlmoduleContainer.appendChild(schwerpunktSubHeader);
+                    
+                    // Module für diesen Schwerpunkt anzeigen
+                    schwerpunktGroups[schwerpunktName].forEach(module => {
+                        const moduleItem = createModuleCheckboxItem(module);
+                        // Pflichtmodule des aktuellen Schwerpunkts speziell markieren
+                        if (module.schwerpunktTyp === selectedSchwerpunkt && module.pflicht === true) {
+                            moduleItem.style.borderLeft = '3px solid #e91e63';
+                            moduleItem.style.paddingLeft = '10px';
+                            moduleItem.title = "Pflichtmodul für deinen gewählten Schwerpunkt";
+                        }
+                        wahlmoduleContainer.appendChild(moduleItem);
+                    });
+                });
+            }
+        }
+        
+        // Create a module checkbox item for the tracker
+        function createModuleCheckboxItem(module) {
+            const div = document.createElement('div');
+            div.className = 'module-item-checkbox';
+            div.dataset.moduleId = module.id;
+            
+            if (module.passed) {
+                div.classList.add('checked');
+            }
+            
+            div.innerHTML = `
+                <input type="checkbox" id="module-${module.id}" ${module.passed ? 'checked' : ''}>
+                <label for="module-${module.id}">
+                    ${module.title} (${module.code}) 
+                    <span class="semester-tag">Semester: ${module.semester}</span>
+                    <span class="semester-tag">${module.lp} LP</span>
+                </label>
+            `;
+            
+            const checkbox = div.querySelector('input');
+            checkbox.addEventListener('change', function() {
+                const moduleId = parseInt(div.dataset.moduleId);
+                const module = allModules.find(m => m.id === moduleId);
+                
+                if (module) {
+                    if (this.checked) {
+                        module.passed = true;
+                        div.classList.add('checked');
+                    } else {
+                        module.passed = false;
+                        div.classList.remove('checked');
+                    }
+                    
+                    // Save module status
+                    saveModuleStatus();
+                    
+                    // Update module selection list
+                    populateModuleSelectionList();
+                    
+                    // Update progress
+                    updateProgress();
+                }
+            });
+            
+            return div;
+        }
+        
+        // Schwerpunkt ändern
+        function changeSchwerpunkt() {
+            const schwerpunktSelect = document.getElementById('schwerpunkt-select');
+            if (schwerpunktSelect) {
+                selectedSchwerpunkt = schwerpunktSelect.value;
+                
+                // Modul-Listen neu befüllen
+                populateModuleLists();
+                
+                // Modulauswahlliste neu befüllen
+                populateModuleSelectionList();
+                
+                // Fortschritt aktualisieren
+                updateProgress();
+                
+                // Status im localStorage speichern
+                saveModuleStatus();
+            }
+        }
+        
+        // Populate the module selection list for adding to schedule
+        function populateModuleSelectionList() {
+            const moduleList = document.getElementById('moduleList');
+            if (!moduleList) return;
+            
+            moduleList.innerHTML = ''; // Clear existing content
+            
+            // Sort all modules by semester and then alphabetically
+            const sortedModules = [...allModules].sort((a, b) => {
+                // Extract semester numbers for comparison
+                const getSemesterNumber = (sem) => {
+                    if (typeof sem === 'number') return sem;
+                    if (sem.startsWith('ab ')) return parseInt(sem.replace('ab ', ''));
+                    return parseInt(sem.split(' ')[0]);
+                };
+                
+                const semA = getSemesterNumber(a.semester);
+                const semB = getSemesterNumber(b.semester);
+                
+                // First sort by semester
+                if (semA !== semB) return semA - semB;
+                
+                // Then sort alphabetically by title
+                return a.title.localeCompare(b.title);
+            });
+            
+            // Group by semester for better organization
+            const semesterGroups = {};
+            
+            sortedModules.forEach(module => {
+                const semKey = module.semester.toString();
+                if (!semesterGroups[semKey]) {
+                    semesterGroups[semKey] = [];
+                }
+                semesterGroups[semKey].push(module);
+            });
+            
+            // Create semester headers and add modules
+            Object.keys(semesterGroups).sort((a, b) => {
+                // Sort semester keys (handle "ab X" format)
+                const getNumber = (str) => {
+                    if (str.startsWith('ab ')) return parseInt(str.replace('ab ', ''));
+                    return parseInt(str.split(' ')[0]);
+                };
+                
+                return getNumber(a) - getNumber(b);
+            }).forEach(semester => {
+                // Create semester header
+                const semHeader = document.createElement('div');
+                semHeader.className = 'semester-header-modal';
+                semHeader.innerHTML = `<h4>Semester ${semester}</h4>`;
+                moduleList.appendChild(semHeader);
+                
+                // Add modules for this semester (sorted alphabetically)
+                semesterGroups[semester].sort((a, b) => a.title.localeCompare(b.title)).forEach(module => {
+                    const option = document.createElement('div');
+                    option.className = 'module-option';
+                    if (module.passed) option.classList.add('passed');
+                    
+                    option.dataset.id = module.id;
+                    option.innerHTML = `
+                        <div class="module-title">${module.title} ${module.passed ? '✓' : ''}</div>
+                        <div class="module-info">Code: ${module.code} | ${module.lp} LP</div>
+                    `;
+                    option.addEventListener('click', () => selectModule(module.id));
+                    moduleList.appendChild(option);
+                });
+            });
+        }
+        
+        // Update progress display
+        function updateProgress() {
+            // Pflichtmodule
+            const pflichtModules = modules;
+            const totalPflichtModules = pflichtModules.length;
+            const passedPflichtModules = pflichtModules.filter(m => m.passed).length;
+            
+            const totalPflichtLP = pflichtModules.reduce((sum, m) => sum + m.lp, 0);
+            const passedPflichtLP = pflichtModules.filter(m => m.passed).reduce((sum, m) => sum + m.lp, 0);
+            
+            const progressPercentPflicht = totalPflichtModules > 0 ? 
+                Math.round((passedPflichtModules / totalPflichtModules) * 100) : 0;
+            
+            // Alle Wahlmodule (sowohl Schwerpunkt als auch allgemeine)
+            const allWahlmodules = [...wahlmodules].filter(m => 
+                m.category === "schwerpunkt" || m.category === "wahlmodul"
+            );
+            
+            // Pflichtmodule im Schwerpunkt
+            const pflichtSchwerpunktModules = allWahlmodules.filter(
+                m => m.schwerpunktTyp === selectedSchwerpunkt && m.pflicht === true
+            );
+            const totalPflichtSchwerpunktModules = pflichtSchwerpunktModules.length;
+            const passedPflichtSchwerpunktModules = pflichtSchwerpunktModules.filter(m => m.passed).length;
+            
+            // Prüfen, ob alle Pflichtmodule für den Schwerpunkt bestanden wurden
+            const allRequiredPassed = totalPflichtSchwerpunktModules > 0 ? 
+                passedPflichtSchwerpunktModules === totalPflichtSchwerpunktModules : true;
+            
+            // Bestandene Module und LP aus allen Wahlmodulen
+            const passedWahlmodules = allWahlmodules.filter(m => m.passed);
+            const passedWahlmoduleCount = passedWahlmodules.length;
+            const passedWahlmoduleLP = passedWahlmodules.reduce((sum, m) => sum + m.lp, 0);
+            
+            // Fortschritt basierend auf dem Zielwert von 25 LP berechnen
+            const requiredWahlmoduleLP = 25;
+            const cappedPassedWahlmoduleLP = Math.min(passedWahlmoduleLP, requiredWahlmoduleLP);
+            
+            // Wenn nicht alle Pflichtmodule bestanden sind, Cap bei 90%
+            let progressPercentWahlmodule = 0;
+            if (allRequiredPassed) {
+                progressPercentWahlmodule = requiredWahlmoduleLP > 0 ?
+                    Math.round((cappedPassedWahlmoduleLP / requiredWahlmoduleLP) * 100) : 0;
+            } else {
+                // Wenn nicht alle Pflichtmodule bestanden sind, maximal 90% Fortschritt anzeigen
+                const tempPercent = requiredWahlmoduleLP > 0 ?
+                    Math.round((cappedPassedWahlmoduleLP / requiredWahlmoduleLP) * 90) : 0;
+                progressPercentWahlmodule = Math.min(tempPercent, 90);
+            }
+            
+            // Interdisziplinäre Wahlmodule
+            const interdisModules = wahlmodules.filter(m => m.category === "interdis");
+            const requiredInterdisLP = 10; // Festgelegt auf 10 LP
+            const totalInterdisModules = interdisModules.length;
+            const passedInterdisModules = interdisModules.filter(m => m.passed).length;
+            
+            const totalInterdisLP = interdisModules.reduce((sum, m) => sum + m.lp, 0);
+            const passedInterdisLP = interdisModules.filter(m => m.passed).reduce((sum, m) => sum + m.lp, 0);
+            
+            // Maximiert bei 10 LP (der erforderlichen Anzahl)
+            const cappedPassedInterdisLP = Math.min(passedInterdisLP, requiredInterdisLP);
+            
+            const progressPercentInterdis = requiredInterdisLP > 0 ? 
+                Math.round((cappedPassedInterdisLP / requiredInterdisLP) * 100) : 0;
+            
+            // Gesamtfortschritt berechnen (125 LP Pflicht + 25 LP Wahlmodule + 10 LP Interdis = 160 LP)
+            const totalRequiredLP = totalPflichtLP + requiredWahlmoduleLP + requiredInterdisLP; // 160 LP
+            
+            // Bei Gesamtfortschritt auch prüfen, ob alle Pflichtmodule im Schwerpunkt bestanden wurden
+            let totalPassedLP = passedPflichtLP + cappedPassedInterdisLP;
+            if (allRequiredPassed) {
+                totalPassedLP += cappedPassedWahlmoduleLP;
+            } else {
+                // Wenn nicht alle Pflichtmodule bestanden sind, nur 90% der Wahlmodul-LP anrechnen
+                totalPassedLP += (cappedPassedWahlmoduleLP * 0.9);
+            }
+            
+            const totalProgressPercent = totalRequiredLP > 0 ? 
+                Math.round((totalPassedLP / totalRequiredLP) * 100) : 0;
+            
+            // Pflichtmodule-Anzeige aktualisieren
+            const progressFillPflicht = document.getElementById('progress-fill-pflicht');
+            if (progressFillPflicht) {
+                progressFillPflicht.style.width = `${progressPercentPflicht}%`;
+                progressFillPflicht.textContent = `${progressPercentPflicht}%`;
+            }
+            
+            const passedCountPflicht = document.getElementById('passed-count-pflicht');
+            if (passedCountPflicht) passedCountPflicht.textContent = passedPflichtModules;
+            
+            const totalCountPflicht = document.getElementById('total-count-pflicht');
+            if (totalCountPflicht) totalCountPflicht.textContent = totalPflichtModules;
+            
+            const passedLpPflicht = document.getElementById('passed-lp-pflicht');
+            if (passedLpPflicht) passedLpPflicht.textContent = passedPflichtLP;
+            
+            const totalLpPflicht = document.getElementById('total-lp-pflicht');
+            if (totalLpPflicht) totalLpPflicht.textContent = totalPflichtLP;
+
+            // Wahlmodule-Anzeige aktualisieren
+            const progressFillWahlmodule = document.getElementById('progress-fill-wahlmodule');
+            if (progressFillWahlmodule) {
+                progressFillWahlmodule.style.width = `${progressPercentWahlmodule}%`;
+                progressFillWahlmodule.textContent = `${progressPercentWahlmodule}%`;
+                
+                // Farbe ändern, wenn nicht alle Pflichtmodule bestanden sind
+                if (!allRequiredPassed) {
+                    progressFillWahlmodule.style.backgroundColor = '#ff9800'; // Orange als Warnung
+                } else {
+                    progressFillWahlmodule.style.backgroundColor = '#FFC107'; // Zurück zur normalen Farbe
+                }
+            }
+            
+            // Wahlmodule Info anzeigen (inkl. Pflichtmodule für Schwerpunkt)
+            const passedCountWahlmodule = document.getElementById('passed-count-wahlmodule');
+            if (passedCountWahlmodule) {
+                passedCountWahlmodule.textContent = passedWahlmoduleCount;
+            }
+            
+            const passedPflichtWahlmodule = document.getElementById('passed-pflicht-wahlmodule');
+            if (passedPflichtWahlmodule) {
+                passedPflichtWahlmodule.textContent = passedPflichtSchwerpunktModules;
+            }
+            
+            const totalPflichtWahlmodule = document.getElementById('total-pflicht-wahlmodule');
+            if (totalPflichtWahlmodule) {
+                totalPflichtWahlmodule.textContent = totalPflichtSchwerpunktModules;
+            }
+            
+            const passedLpWahlmodule = document.getElementById('passed-lp-wahlmodule');
+            if (passedLpWahlmodule) {
+                passedLpWahlmodule.textContent = cappedPassedWahlmoduleLP;
+            }
+            
+            const totalLpWahlmodule = document.getElementById('total-lp-wahlmodule');
+            if (totalLpWahlmodule) {
+                totalLpWahlmodule.textContent = requiredWahlmoduleLP;
+            }
+
+            // Interdisziplinäre Wahlmodule-Anzeige aktualisieren
+            const progressFillInterdis = document.getElementById('progress-fill-interdis');
+            if (progressFillInterdis) {
+                progressFillInterdis.style.width = `${progressPercentInterdis}%`;
+                progressFillInterdis.textContent = `${progressPercentInterdis}%`;
+            }
+            
+            const passedCountInterdis = document.getElementById('passed-count-interdis');
+            if (passedCountInterdis) passedCountInterdis.textContent = passedInterdisModules;
+            
+            const totalCountInterdis = document.getElementById('total-count-interdis');
+            if (totalCountInterdis) totalCountInterdis.textContent = 2; // Wir brauchen etwa 2 Module (5 LP pro Modul, 10 LP gesamt)
+            
+            const passedLpInterdis = document.getElementById('passed-lp-interdis');
+            if (passedLpInterdis) passedLpInterdis.textContent = cappedPassedInterdisLP;
+
+            // Gesamtfortschritt aktualisieren
+            const progressFill = document.getElementById('progress-fill');
+            if (progressFill) {
+                progressFill.style.width = `${totalProgressPercent}%`;
+                progressFill.textContent = `${totalProgressPercent}%`;
+                
+                // Farbe ändern, wenn nicht alle Pflichtmodule im Schwerpunkt bestanden sind
+                if (!allRequiredPassed) {
+                    progressFill.style.backgroundColor = '#ff9800'; // Orange als Warnung
+                } else {
+                    progressFill.style.backgroundColor = '#4CAF50'; // Zurück zur normalen Farbe
+                }
+            }
+            
+            const passedCount = document.getElementById('passed-count');
+            if (passedCount) {
+                let text = `${passedPflichtModules + passedWahlmoduleCount + passedInterdisModules}`;
+                if (totalPflichtSchwerpunktModules > 0 && !allRequiredPassed) {
+                    text += ` <span style="color: #ff9800; font-weight: bold; font-size: 11px;">(Schwerpunkt-Pflichtmodule: ${passedPflichtSchwerpunktModules}/${totalPflichtSchwerpunktModules})</span>`;
+                }
+                passedCount.innerHTML = text;
+            }
+            
+            const totalCount = document.getElementById('total-count');
+            if (totalCount) {
+                let totalModules = totalPflichtModules + allWahlmodules.length + totalInterdisModules;
+                totalCount.textContent = totalModules;
+            }
+            
+            const passedLp = document.getElementById('passed-lp');
+            if (passedLp) {
+                let text = totalPassedLP.toFixed(0);
+                if (totalPflichtSchwerpunktModules > 0 && !allRequiredPassed) {
+                    text += ` <span style="color: #ff9800; font-weight: bold; font-size: 11px;">(mit Abzug für fehlende Pflichtmodule)</span>`;
+                }
+                passedLp.innerHTML = text;
+            }
+            
+            const totalLp = document.getElementById('total-lp');
+            if (totalLp) totalLp.textContent = totalRequiredLP;
+            
+            // Titel für Schwerpunktmodule aktualisieren
+            const schwerpunktTitel = document.getElementById('schwerpunkt-titel');
+            if (schwerpunktTitel) {
+                let text = `Schwerpunktmodule (${selectedSchwerpunkt})`;
+                if (totalPflichtSchwerpunktModules > 0) {
+                    text += ` - ${passedPflichtSchwerpunktModules}/${totalPflichtSchwerpunktModules} Pflichtmodule absolviert`;
+                    
+                    if (!allRequiredPassed) {
+                        text += ' <span style="color: #ff9800; font-weight: bold;">⚠️</span>';
+                    } else {
+                        text += ' ✓';
+                    }
+                }
+                schwerpunktTitel.innerHTML = text;
+            }
+            
+            // Schwerpunkt im Dropdown aktualisieren
+            const schwerpunktSelect = document.getElementById('schwerpunkt-select');
+            if (schwerpunktSelect) {
+                schwerpunktSelect.value = selectedSchwerpunkt;
+            }
+        }
+        
+        // Save module status to localStorage
+        function saveModuleStatus() {
+            const moduleStatus = allModules.map(module => ({
+                id: module.id,
+                passed: module.passed
+            }));
+            
+            localStorage.setItem('moduleStatus', JSON.stringify(moduleStatus));
+            localStorage.setItem('selectedSchwerpunkt', selectedSchwerpunkt);
+        }
+        
+        // Load module status from localStorage
+        function loadModuleStatus() {
+            const savedStatus = localStorage.getItem('moduleStatus');
+            const savedSchwerpunkt = localStorage.getItem('selectedSchwerpunkt');
+            
+            if (savedSchwerpunkt) {
+                selectedSchwerpunkt = savedSchwerpunkt;
+            }
+            
+            if (!savedStatus) return;
+            
+            try {
+                const moduleStatus = JSON.parse(savedStatus);
+                
+                moduleStatus.forEach(status => {
+                    const module = allModules.find(m => m.id === status.id);
+                    if (module) {
+                        module.passed = status.passed;
+                    }
+                });
+                
+                // Update checkboxes
+                document.querySelectorAll('.module-item-checkbox').forEach(item => {
+                    const moduleId = parseInt(item.dataset.moduleId);
+                    const module = allModules.find(m => m.id === moduleId);
+                    
+                    if (module && module.passed) {
+                        item.classList.add('checked');
+                        const checkbox = item.querySelector('input');
+                        if (checkbox) checkbox.checked = true;
+                    }
+                });
+                
+                // Schwerpunkt-Dropdown aktualisieren
+                const schwerpunktSelect = document.getElementById('schwerpunkt-select');
+                if (schwerpunktSelect) {
+                    schwerpunktSelect.value = selectedSchwerpunkt;
+                }
+                
+                updateProgress();
+            } catch (error) {
+                console.error('Error loading module status:', error);
+            }
+        }
+
+        // Add the "+ Module" and "+ Custom" buttons to empty cells
+        function addButtonsToCell(cell) {
+            const buttonsDiv = document.createElement('div');
+            buttonsDiv.className = 'add-buttons';
+
+            const addModuleBtn = document.createElement('button');
+            addModuleBtn.className = 'add-module-btn';
+            addModuleBtn.textContent = '+ Modul';
+            addModuleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const cellId = cell.id.split('-');
+                const day = cellId[0];
+                const timeSlot = parseInt(cellId[1]);
+                openModuleModal(day, timeSlot);
+            });
+
+            const addCustomBtn = document.createElement('button');
+            addCustomBtn.className = 'add-custom-btn';
+            addCustomBtn.textContent = '+ Eigener Kurs';
+            addCustomBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const cellId = cell.id.split('-');
+                const day = cellId[0];
+                const timeSlot = parseInt(cellId[1]);
+                openCustomModal(day, timeSlot);
+            });
+
+            buttonsDiv.appendChild(addModuleBtn);
+            buttonsDiv.appendChild(addCustomBtn);
+            cell.appendChild(buttonsDiv);
+        }
+
+        // Handle click on a schedule cell
+        function handleCellClick(day, timeSlot) {
+            openModuleModal(day, timeSlot);
+        }
+
+        // Open the module selection modal
+        function openModuleModal(day, timeSlot) {
+            selectedDay = day;
+            selectedTimeSlot = timeSlot;
+            selectedModule = null;
+            
+            // Reset any previous selection
+            document.querySelectorAll('.module-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // Hide the module type selection initially
+            const moduleTypeSelection = document.getElementById('moduleTypeSelection');
+            if (moduleTypeSelection) {
+                moduleTypeSelection.style.display = 'none';
+            }
+            
+            // Reset radio button to standard
+            const standardRadio = document.querySelector('input[name="moduleType"][value="standard"]');
+            if (standardRadio) {
+                standardRadio.checked = true;
+            }
+            
+            // Reset the room input field
+            const moduleRoom = document.getElementById('moduleRoom');
+            if (moduleRoom) {
+                moduleRoom.value = '';
+            }
+            
+            // Disable add button until a module is selected
+            const addModuleBtn = document.getElementById('addModuleBtn');
+            if (addModuleBtn) {
+                addModuleBtn.disabled = true;
+                addModuleBtn.style.opacity = '0.5';
+            }
+            
+            const moduleModal = document.getElementById('moduleModal');
+            if (moduleModal) {
+                moduleModal.style.display = 'block';
+            }
+        }
+
+        // Close the module selection modal
+        function closeModuleModal() {
+            const moduleModal = document.getElementById('moduleModal');
+            if (moduleModal) {
+                moduleModal.style.display = 'none';
+            }
+        }
+
+        // Select a module in the list
+        function selectModule(moduleId) {
+            selectedModule = allModules.find(m => m.id === parseInt(moduleId));
+            
+            // Highlight the selected module
+            document.querySelectorAll('.module-option').forEach(option => {
+                if (option.dataset.id == moduleId) {
+                    option.classList.add('selected');
+                } else {
+                    option.classList.remove('selected');
+                }
+            });
+            
+            // Show the module type selection
+            const moduleTypeSelection = document.getElementById('moduleTypeSelection');
+            if (moduleTypeSelection) {
+                moduleTypeSelection.style.display = 'block';
+            }
+            
+            // Enable add button
+            const addModuleBtn = document.getElementById('addModuleBtn');
+            if (addModuleBtn) {
+                addModuleBtn.disabled = false;
+                addModuleBtn.style.opacity = '1';
+            }
+        }
+
+        // Add the selected module to the schedule
+        function addSelectedModule() {
+            if (selectedModule && selectedDay && selectedTimeSlot !== null) {
+                // Get the selected module type
+                const moduleTypeElement = document.querySelector('input[name="moduleType"]:checked');
+                const moduleType = moduleTypeElement ? moduleTypeElement.value : 'standard';
+                
+                // Get the selected week type
+                const weekTypeElement = document.querySelector('input[name="weekType"]:checked');
+                const weekType = weekTypeElement ? weekTypeElement.value : 'alle';
+                
+                // Get the room value
+                const moduleRoomElement = document.getElementById('moduleRoom');
+                const room = moduleRoomElement ? moduleRoomElement.value.trim() : '';
+                
+                // Create a copy of the selected module
+                const moduleData = {...selectedModule};
+                
+                // Create title with appropriate suffixes
+                let titleWithSuffixes = moduleData.title;
+                
+                // Add module type if not standard
+                if (moduleType !== 'standard') {
+                    titleWithSuffixes += ` (${moduleType})`;
+                }
+                
+                // Add week type if not "all weeks"
+                if (weekType !== 'alle') {
+                    const weekLabel = weekType === 'ungerade' ? 'ungerade Wochen' : 'gerade Wochen';
+                    titleWithSuffixes += ` [${weekLabel}]`;
+                }
+                
+                // Update the title
+                moduleData.title = titleWithSuffixes;
+                
+                // Add week type data and room
+                schedule[selectedDay][selectedTimeSlot].push({
+                    type: 'module',
+                    data: moduleData,
+                    passed: moduleData.passed,
+                    weekType: weekType,
+                    room: room
+                });
+                
+                updateScheduleDisplay();
+                closeModuleModal();
+            } else {
+                alert('Bitte wähle ein Modul aus.');
+            }
+        }
+
+        // Open the custom course modal
+        function openCustomModal(day, timeSlot) {
+            selectedDay = day;
+            selectedTimeSlot = timeSlot;
+            
+            // Clear the form
+            const courseTitle = document.getElementById('courseTitle');
+            if (courseTitle) courseTitle.value = '';
+            
+            const courseCode = document.getElementById('courseCode');
+            if (courseCode) courseCode.value = '';
+            
+            const courseRoom = document.getElementById('courseRoom');
+            if (courseRoom) courseRoom.value = '';
+            
+            const courseInstructor = document.getElementById('courseInstructor');
+            if (courseInstructor) courseInstructor.value = '';
+            
+            // Reset radio button to "alle Wochen"
+            const alleWochenRadio = document.querySelector('input[name="customWeekType"][value="alle"]');
+            if (alleWochenRadio) {
+                alleWochenRadio.checked = true;
+            }
+            
+            const customModal = document.getElementById('customModal');
+            if (customModal) {
+                customModal.style.display = 'block';
+            }
+        }
+
+        // Close the custom course modal
+        function closeCustomModal() {
+            const customModal = document.getElementById('customModal');
+            if (customModal) {
+                customModal.style.display = 'none';
+            }
+        }
+
+        // Add a custom course to the schedule
+        function addCustomCourse() {
+            const courseTitle = document.getElementById('courseTitle');
+            const courseCode = document.getElementById('courseCode');
+            const courseRoom = document.getElementById('courseRoom');
+            const courseInstructor = document.getElementById('courseInstructor');
+            
+            // Wochenrhythmus für eigene Kurse auslesen
+            const customWeekTypeElement = document.querySelector('input[name="customWeekType"]:checked');
+            const weekType = customWeekTypeElement ? customWeekTypeElement.value : 'alle';
+            
+            const title = courseTitle ? courseTitle.value.trim() : '';
+            const code = courseCode ? courseCode.value.trim() : '';
+            const room = courseRoom ? courseRoom.value.trim() : '';
+            const instructor = courseInstructor ? courseInstructor.value.trim() : '';
+            
+            if (title && selectedDay && selectedTimeSlot !== null) {
+                // Titel mit Wochenhinweis versehen, wenn nicht 'alle'
+                let finalTitle = title;
+                if (weekType !== 'alle') {
+                    const weekLabel = weekType === 'ungerade' ? 'ungerade Wochen' : 'gerade Wochen';
+                    finalTitle += ` [${weekLabel}]`;
+                }
+                
+                schedule[selectedDay][selectedTimeSlot].push({
+                    type: 'custom',
+                    data: {
+                        title: finalTitle,
+                        code: code,
+                        room: room,
+                        instructor: instructor
+                    },
+                    weekType: weekType // Wochenrhythmus speichern
+                });
+                
+                updateScheduleDisplay();
+                closeCustomModal();
+            } else {
+                alert('Bitte gib einen Kurstitel ein.');
+            }
+        }
+
+        // Remove a course from the schedule
+        function removeCourse(day, timeSlot, index) {
+            schedule[day][timeSlot].splice(index, 1);
+            updateScheduleDisplay();
+        }
+
+        // Update the display of the schedule
+        function updateScheduleDisplay() {
+            const days = ['Mo', 'Di', 'Mi', 'Do', 'Fr'];
+            
+            days.forEach(day => {
+                for (let timeSlot = 0; timeSlot < 7; timeSlot++) {
+                    const cellId = `${day}-${timeSlot}`;
+                    const cell = document.getElementById(cellId);
+                    if (!cell) continue;
+                    
+                    const courses = schedule[day][timeSlot];
+                    
+                    // Clear the cell
+                    cell.innerHTML = '';
+                    
+                    // Add courses if any
+                    if (courses.length > 0) {
+                        courses.forEach((course, index) => {
+                            const courseElement = document.createElement('div');
+                            
+                            // Bestimmen, ob der Kurs in der aktuellen Woche stattfindet
+                            let courseActive = true;
+                            if (course.weekType) {
+                                if (course.weekType === 'gerade' && !isEvenWeek) {
+                                    courseActive = false;
+                                } else if (course.weekType === 'ungerade' && isEvenWeek) {
+                                    courseActive = false;
+                                }
+                            }
+                            
+                            // Set appropriate class based on type, passed status and active status
+                            if (course.type === 'module') {
+                                if (course.data.passed || course.passed) {
+                                    courseElement.className = 'course-item passed-module';
+                                } else {
+                                    courseElement.className = 'course-item module-item';
+                                }
+                                
+                                // Überschreibe die Klasse basierend auf der aktuellen KW
+                                if (course.weekType) {
+                                    if (courseActive) {
+                                        courseElement.className = 'course-item course-active';
+                                    } else {
+                                        courseElement.className = 'course-item course-inactive';
+                                    }
+                                }
+                            } else {
+                                courseElement.className = 'course-item custom-item';
+                                
+                                // Auch für eigene Kurse die KW-basierte Klasse anwenden
+                                if (course.weekType && course.weekType !== 'alle') {
+                                    if (courseActive) {
+                                        courseElement.className = 'course-item course-active';
+                                    } else {
+                                        courseElement.className = 'course-item course-inactive';
+                                    }
+                                }
+                            }
+                            
+                            let courseContent = `
+                                <span class="remove-btn" onclick="event.stopPropagation(); removeCourse('${day}', ${timeSlot}, ${index})">×</span>
+                                <div class="course-title">${course.data.title} ${(course.type === 'module' && (course.data.passed || course.passed)) ? '✓' : ''}</div>
+                                <div class="course-code">${course.data.code || ''}</div>
+                            `;
+                            
+                            // Zeige Raum an, wenn vorhanden
+                            if (course.room || course.data.room) {
+                                courseContent += `<div class="course-room">Raum: ${course.room || course.data.room}</div>`;
+                            }
+                            
+                            if (course.type === 'custom') {
+                                if (course.data.instructor) {
+                                    courseContent += `<div class="course-instructor">Dozent: ${course.data.instructor}</div>`;
+                                }
+                                
+                                // Wochenanzeige für eigene Kurse
+                                if (course.weekType && course.weekType !== 'alle') {
+                                    if (course.weekType === 'ungerade') {
+                                        courseContent += `<div class="week-indicator ungerade" title="Nur ungerade Wochen">◯</div>`;
+                                    } else if (course.weekType === 'gerade') {
+                                        courseContent += `<div class="week-indicator gerade" title="Nur gerade Wochen">⬤</div>`;
+                                    }
+                                    
+                                    // Zeige zusätzlichen Text für aktive/inaktive Kurse
+                                    const statusText = courseActive ? 
+                                        "Findet diese Woche statt!" : 
+                                        "Findet diese Woche nicht statt!";
+                                    courseContent += `<div style="font-size: 11px; margin-top: 4px; font-style: italic;">${statusText}</div>`;
+                                }
+                            } else if (course.type === 'module') {
+                                courseContent += `<div class="course-lp">LP: ${course.data.lp}</div>`;
+                                
+                                // Add week indicator icon if applicable
+                                if (course.weekType === 'ungerade') {
+                                    courseContent += `<div class="week-indicator ungerade" title="Nur ungerade Wochen">◯</div>`;
+                                } else if (course.weekType === 'gerade') {
+                                    courseContent += `<div class="week-indicator gerade" title="Nur gerade Wochen">⬤</div>`;
+                                }
+                                
+                                // Zeige zusätzlichen Text für aktive/inaktive Kurse
+                                if (course.weekType) {
+                                    const statusText = courseActive ? 
+                                        "Findet diese Woche statt!" : 
+                                        "Findet diese Woche nicht statt!";
+                                    courseContent += `<div style="font-size: 11px; margin-top: 4px; font-style: italic;">${statusText}</div>`;
+                                }
+                            }
+                            
+                            courseElement.innerHTML = courseContent;
+                            cell.appendChild(courseElement);
+                        });
+                    }
+                    
+                    // Add buttons
+                    addButtonsToCell(cell);
+                }
+            });
+        }
+
+        // Save the schedule to localStorage (backup method)
+        function saveSchedule() {
+            const dataToSave = {
+                schedule: schedule,
+                moduleStatus: allModules.map(module => ({
+                    id: module.id,
+                    passed: module.passed
+                }))
+            };
+            
+            localStorage.setItem('fhKielSchedule', JSON.stringify(dataToSave));
+            alert('Stundenplan wurde im Browser gespeichert!');
+        }
+
+        // Load the schedule from localStorage (backup method)
+        function loadSchedule(showAlert = true) {
+            const savedData = localStorage.getItem('fhKielSchedule');
+            if (savedData) {
+                try {
+                    const parsedData = JSON.parse(savedData);
+                    
+                    // Load schedule
+                    if (parsedData.schedule) {
+                        schedule = parsedData.schedule;
+                    }
+                    
+                    // Load module status if available
+                    if (parsedData.moduleStatus) {
+                        parsedData.moduleStatus.forEach(status => {
+                            const module = allModules.find(m => m.id === status.id);
+                            if (module) {
+                                module.passed = status.passed;
+                            }
+                        });
+                        
+                        // Update checkboxes
+                        document.querySelectorAll('.module-item-checkbox').forEach(item => {
+                            const moduleId = parseInt(item.dataset.moduleId);
+                            const module = allModules.find(m => m.id === moduleId);
+                            
+                            if (module && module.passed) {
+                                item.classList.add('checked');
+                                const checkbox = item.querySelector('input');
+                                if (checkbox) checkbox.checked = true;
+                            } else {
+                                item.classList.remove('checked');
+                                const checkbox = item.querySelector('input');
+                                if (checkbox) checkbox.checked = false;
+                            }
+                        });
+                        
+                        // Load selected Schwerpunkt if available
+                        if (parsedData.selectedSchwerpunkt) {
+                            selectedSchwerpunkt = parsedData.selectedSchwerpunkt;
+                            
+                            const schwerpunktSelect = document.getElementById('schwerpunkt-select');
+                            if (schwerpunktSelect) {
+                                schwerpunktSelect.value = selectedSchwerpunkt;
+                            }
+                        }
+                        
+                        // Update module selection list
+                        populateModuleSelectionList();
+                        
+                        // Update module lists
+                        populateModuleLists();
+                        
+                        // Update progress
+                        updateProgress();
+                    }
+                    
+                    updateScheduleDisplay();
+                    
+                    if (showAlert) {
+                        alert('Stundenplan wurde aus Browser-Speicher geladen!');
+                    }
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                    if (showAlert) {
+                        alert('Fehler beim Laden des Stundenplans!');
+                    }
+                }
+            } else if (showAlert) {
+                alert('Kein gespeicherter Stundenplan im Browser gefunden!');
+            }
+        }
+        
+        // Stundenplan als Datei speichern zum Download
+        function saveScheduleToFile() {
+            // Dateiname-Vorschlag mit aktuellem Datum erstellen
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+            
+            // Nach Dateinamen fragen
+            const fileName = prompt("Dateiname für deinen Stundenplan:", `Stundenplan_${dateStr}`);
+            
+            if (!fileName) return; // Benutzer hat abgebrochen
+            
+            // Daten zum Speichern vorbereiten
+            const dataToSave = {
+                schedule: schedule,
+                moduleStatus: allModules.map(module => ({
+                    id: module.id,
+                    passed: module.passed
+                }))
+            };
+            
+            // Dateiinhalt erstellen
+            const fileContent = JSON.stringify(dataToSave, null, 2);
+            const blob = new Blob([fileContent], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            
+            // Download-Link erstellen und Download auslösen
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName + '.json';
+            document.body.appendChild(a);
+            a.click();
+            
+            // Aufräumen
+            setTimeout(() => {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }, 0);
+            
+            // Auch im localStorage als Backup speichern
+            localStorage.setItem('fhKielSchedule', JSON.stringify(dataToSave));
+        }
+        
+        // Trigger file selection dialog for loading a schedule
+        function loadScheduleFromFile() {
+            document.getElementById('fileInput').click();
+        }
+        
+        // Handle the selected file
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const loadedData = JSON.parse(e.target.result);
+                    
+                    // Basic validation
+                    if (loadedData && typeof loadedData === 'object' && 
+                        loadedData.schedule && loadedData.moduleStatus) {
+                        
+                        // Load schedule
+                        schedule = loadedData.schedule;
+                        
+                        // Load module status
+                        loadedData.moduleStatus.forEach(status => {
+                            const module = allModules.find(m => m.id === status.id);
+                            if (module) {
+                                module.passed = status.passed;
+                            }
+                        });
+                        
+                        // Update checkboxes
+                        document.querySelectorAll('.module-item-checkbox').forEach(item => {
+                            const moduleId = parseInt(item.dataset.moduleId);
+                            const module = allModules.find(m => m.id === moduleId);
+                            
+                            if (module && module.passed) {
+                                item.classList.add('checked');
+                                const checkbox = item.querySelector('input');
+                                if (checkbox) checkbox.checked = true;
+                            } else {
+                                item.classList.remove('checked');
+                                const checkbox = item.querySelector('input');
+                                if (checkbox) checkbox.checked = false;
+                            }
+                        });
+                        
+                        // Update module selection list
+                        populateModuleSelectionList();
+                        
+                        // Update schedule display
+                        updateScheduleDisplay();
+                        
+                        // Update progress
+                        updateProgress();
+                        
+                        alert(`Stundenplan aus Datei "${file.name}" erfolgreich geladen!`);
+                        
+                        // Also save to localStorage as backup
+                        localStorage.setItem('fhKielSchedule', JSON.stringify(loadedData));
+                    } else {
+                        alert('Die ausgewählte Datei enthält keinen gültigen Stundenplan.');
+                    }
+                } catch (error) {
+                    alert('Fehler beim Laden der Datei. Bitte wähle eine gültige Stundenplan-Datei aus.');
+                    console.error('Error loading schedule file:', error);
+                }
+            };
+            reader.readAsText(file);
+            
+            // Reset the file input so the same file can be selected again
+            event.target.value = '';
+        }
+        
+        // Clear the entire schedule
+        function clearSchedule() {
+            if (confirm('Möchtest du wirklich den gesamten Stundenplan löschen?')) {
+                schedule = {
+                    Mo: Array(7).fill().map(() => []),
+                    Di: Array(7).fill().map(() => []),
+                    Mi: Array(7).fill().map(() => []),
+                    Do: Array(7).fill().map(() => []),
+                    Fr: Array(7).fill().map(() => [])
+                };
+                updateScheduleDisplay();
+            }
+        }
+
+        // Initialize the page when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            init();
+            // KW initialisieren und anzeigen
+            updateKWDisplay();
+        });
+    </script>
+</body>
+</html>
